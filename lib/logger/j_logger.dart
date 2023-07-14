@@ -127,7 +127,7 @@ class SimpleLogPrinter extends LogPrinter {
     final List<String> currentFrameList =
     currentFrame.split(' ').where((String part) => part.isNotEmpty && !part.contains('#')).toList();
     final String classNameAndMethodName = currentFrameList[0];
-    final String filePath = currentFrameList[1];
+    final String filePath = currentFrameList.where((String element) => element.contains('(')).first;
     final int lastSlashIndex = filePath.lastIndexOf('/');
     final String fileNameWithLine = filePath.substring(lastSlashIndex + 1);
     final String fileName = fileNameWithLine.substring(0, fileNameWithLine.indexOf(':'));
