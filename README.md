@@ -8,6 +8,5 @@ flutter_cj_kit:
 ```
 ### 修改App入口
 ```bash
-将runApp(App())替换为OrviboKit.runApp(app: OrviboKitApp(App(),appVersion: "1.0"))，
-appVersion为可选参数,可直接修改OrviboKitApp.version变量。
+将runApp(App())替换为CjKit.runApp(App())
 ```
