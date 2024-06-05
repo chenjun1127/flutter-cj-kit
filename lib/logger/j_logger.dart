@@ -82,6 +82,8 @@ class FileLoggerOutput extends LogOutput {
     // print(file);
     // 日志保存在应用程序的沙盒目录中，这是应用程序具有写入权限的地方。存放在模拟器中设备地方
     // /data/user/0/com.example.flutter_advanced/app_flutter/logs.txt
+    // 确保文件存在，如果不存在则创建
+    await file.create(recursive: true);
     _sink = file.openWrite(mode: FileMode.append);
   }
 
