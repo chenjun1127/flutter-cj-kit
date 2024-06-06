@@ -20,7 +20,7 @@ class JLogger {
   static void init() {
     _logger = Logger(
       filter: LoggerFilter(),
-      output: kReleaseMode ? FileLoggerOutput() : LoggerOutput(),
+      output: kReleaseMode ? FileLoggerOutput(fileName: 'app.log') : LoggerOutput(),
       // printer: PrettyPrinter(
       //   methodCount: 2,
       //   errorMethodCount: 10,
@@ -67,10 +67,15 @@ class FileLoggerOutput extends LogOutput {
   @override
   void output(OutputEvent event) {
     for (final String i in event.lines) {
-      if (_sink != null) {
-        _sink!.write('$i\n');
-      }
+      final String cleanLine = removeAnsiEscape(i);
+      _sink?.write('$cleanLine\n');
     }
+  }
+
+  // 移除 ANSI 转义序列
+  String removeAnsiEscape(String input) {
+    final RegExp ansiEscapeRegExp = RegExp(r'\x1B\[[0-?]*[ -/]*[@-~]');
+    return input.replaceAll(ansiEscapeRegExp, '');
   }
 
   IOSink? _sink;
@@ -127,28 +132,37 @@ class SimpleLogPrinter extends LogPrinter {
     // final String className = currentFrame.split(".").elementAt(0).trim();
     final String? emoji = PrettyPrinter.levelEmojis[event.level];
     final List<String> currentFrameList =
-    currentFrame.split(' ').where((String part) => part.isNotEmpty && !part.contains('#')).toList();
+        currentFrame.split(' ').where((String part) => part.isNotEmpty && !part.contains('#')).toList();
     final String classNameAndMethodName = currentFrameList[0];
     final String filePath = currentFrameList.where((String element) => element.contains('(')).first;
     final int lastSlashIndex = filePath.lastIndexOf('/');
     final String fileNameWithLine = filePath.substring(lastSlashIndex + 1);
     final String fileName = fileNameWithLine.substring(0, fileNameWithLine.indexOf(':'));
+    final String methodName = _extractMethodName(classNameAndMethodName);
     String logMessage = event.message as String;
     if (logMessage.length > lineLength!) {
       logMessage = logMessage.substring(0, lineLength);
     }
     final String color = _getLogColor2(event.level);
-    final String color2 = levelColors2[event.level]!;
+    // final String color2 = levelColors2[event.level]!;
     // 通过在日志消息中插入颜色代码，并使用 ANSI 转义码将其包裹起来
     // \x1B 是 ANSI 转义序列的开始，用于指示后续字符是一个转义码。
     // \x1B[0m 是用于重置颜色样式的 ANSI 转义码。
     // 下现两种添加日志颜色写法都可以
     // return <String>[
-    //   "\x1B[$color2${DateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(event.time)} $emoji${levelAbbr[event.level]}/$fileName [$classNameAndMethodName:$lineNumber]: $logMessage\x1B[0m"
+    //   "\x1B[$color2${DateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(event.time)} $emoji${levelAbbr[event.level]}/$fileName [methodName:$lineNumber]: $logMessage\x1B[0m"
     // ];
     return <String>[
-      "$color${DateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(event.time)} $emoji${levelAbbr[event.level]}/$fileName [$classNameAndMethodName:$lineNumber]: $logMessage\x1B[0m"
+      "$color[${DateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(event.time)}] $emoji${levelAbbr[event.level]}/$fileName [$methodName:$lineNumber]: $logMessage\x1B[0m"
     ];
+  }
+
+  String _extractMethodName(String classNameAndMethodName) {
+    final RegExp methodNameRegExp = RegExp(r'\.(\w+)(<.*>)?$');
+    final RegExpMatch? match = methodNameRegExp.firstMatch(classNameAndMethodName);
+    final String methodName = match != null ? match.group(1) ?? 'build' : 'build';
+    final String className = classNameAndMethodName.split('.').first;
+    return '$className.$methodName';
   }
 
   static final Map<Level, String> levelAbbr = <Level, String>{

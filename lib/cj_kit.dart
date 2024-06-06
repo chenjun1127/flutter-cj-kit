@@ -18,8 +18,12 @@ class CjKit {
       },
       (Object error, StackTrace stackTrace) {
         // 异常处理逻辑
-        print('Caught error: $error');
-        print('Stack trace: $stackTrace');
+        final String logMessage = 'Caught error: $error\nStack trace: $stackTrace';
+        if (logCallback != null) {
+          logCallback(logMessage);
+        } else {
+          print(logMessage);
+        }
       },
       zoneSpecification: ZoneSpecification(
         print: (Zone self, ZoneDelegate parent, Zone zone, String line) {
