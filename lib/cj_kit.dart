@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart' as dart;
+export 'package:cj_kit/fps/fps_utils.dart';
 
 typedef LogCallback = void Function(String);
 

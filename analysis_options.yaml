@@ -152,7 +152,7 @@ linter:
     - prefer_final_locals
     #- prefer_final_parameters #2.13.0 暂时无法生效
     - prefer_for_elements_to_map_fromIterable
-    - prefer_foreach #avoid_function_literals_in_foreach_calls
+    #- prefer_foreach #avoid_function_literals_in_foreach_calls
     - prefer_function_declarations_over_variables
     - prefer_generic_function_type_aliases
     - prefer_if_elements_to_conditional_expressions
