@@ -1,8 +1,9 @@
 import 'dart:async';
 
+import 'package:cj_kit/logger/logger_uploader.dart';
+import 'package:cj_kit/logger/logger_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart' as dart;
-export 'package:cj_kit/fps/fps_utils.dart';
 
 typedef LogCallback = void Function(String);
 
@@ -15,6 +16,7 @@ class CjKit {
     await runZonedGuarded(
       () async {
         await preRun?.call();
+        _initializeLogTasks();
         dart.runApp(app);
       },
       (Object error, StackTrace stackTrace) {
@@ -23,7 +25,7 @@ class CjKit {
         if (logCallback != null) {
           logCallback(logMessage);
         } else {
-          print(logMessage);
+          debugPrint(logMessage);
         }
       },
       zoneSpecification: ZoneSpecification(
@@ -33,5 +35,14 @@ class CjKit {
         },
       ),
     );
+  }
+
+  // 初始化日志上传和清理的定时任务
+  static void _initializeLogTasks() {
+    Timer.periodic(const Duration(hours: 24), (Timer timer) async {
+      // 上传日志和清理旧日志
+      await LoggerUploader.uploadLogsBatch();
+      await LoggerUtils.cleanOldLogs();
+    });
   }
 }

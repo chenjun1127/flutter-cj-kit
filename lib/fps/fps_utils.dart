@@ -1,7 +1,7 @@
 import 'dart:collection';
 import 'dart:ui';
 
-import 'package:cj_kit/logger/j_logger.dart';
+import 'package:cj_kit/logger/app_logger.dart';
 import 'package:flutter/cupertino.dart';
 
 class FPSUtils {
@@ -48,7 +48,7 @@ class FPSUtils {
     final int inSec = duration.inSeconds.abs();
     if (inSec > 5) {
       _lastReportTime = now;
-      JLogger.i('fps:$fps');
+      AppLogger.i('fps:$fps');
       // LauncherDaemon().watchdog();
     }
   }
