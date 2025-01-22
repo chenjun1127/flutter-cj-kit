@@ -211,7 +211,7 @@ class SimpleLogPrinter extends LogPrinter {
     // 根据 lineNumber 是否为 null，决定是否添加行号
     final String formattedLog = stackFrameInfo.lineNumber != null
         ? '$baseLog[${stackFrameInfo.methodName}:${stackFrameInfo.lineNumber}]' // 行号存在时添加
-        : '$baseLog${stackFrameInfo.methodName}';
+        : '$baseLog[${stackFrameInfo.methodName}]';
 
     return <String>['$formattedLog: $logMessage\x1B[0m'];
   }
