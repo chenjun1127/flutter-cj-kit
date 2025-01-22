@@ -60,9 +60,9 @@ class LoggerUploader {
         await _shareLogFile(zipFile);
         return;
       }
-
+      final String isoDate = DateTime.now().toIso8601String().replaceAll('T', '_').replaceAll(':', '-').split('.')[0];
       // 将 zip 文件保存到下载目录
-      final String zipFilePath = p.join(downloadDir.path, 'logs_${DateTime.now().toIso8601String()}.zip');
+      final String zipFilePath = p.join(downloadDir.path, 'logs_$isoDate.zip');
       final File savedZipFile = await zipFile.copy(zipFilePath);
       debugPrint('Logs saved to: ${savedZipFile.path}');
 
@@ -104,7 +104,8 @@ class LoggerUploader {
 
   // 将日志文件压缩成 zip
   static Future<File> _createZipFromLogs(List<FileSystemEntity> logFiles, String logDirPath) async {
-    final String zipFilePath = p.join(logDirPath, 'logs_${DateTime.now().toIso8601String()}.zip');
+    final String isoDate = DateTime.now().toIso8601String().replaceAll('T', '_').replaceAll(':', '-').split('.')[0];
+    final String zipFilePath = p.join(logDirPath, 'logs_$isoDate.zip');
     final File zipFile = File(zipFilePath);
 
     final ZipFileEncoder encoder = ZipFileEncoder();
