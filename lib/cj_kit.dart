@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart' as dart;
 
 export 'package:cj_kit/fps/fps_utils.dart';
 export 'package:cj_kit/logger/app_logger.dart';
+export 'package:cj_kit/logger/logger_uploader.dart';
 
 typedef LogCallback = void Function(String);
 
@@ -19,7 +20,7 @@ class CjKit {
     await runZonedGuarded(
       () async {
         await preRun?.call();
-        _initializeLogTasks();
+        // _initializeLogTasks();
         dart.runApp(app);
       },
       (Object error, StackTrace stackTrace) {
