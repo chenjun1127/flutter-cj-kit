@@ -154,7 +154,7 @@ class FileLoggerOutput extends LogOutput {
 class LoggerFilter extends LogFilter {
   @override
   bool shouldLog(LogEvent event) {
-    return !kReleaseMode || (kReleaseMode && event.level.index >= Level.warning.index);
+    return !kReleaseMode || (kReleaseMode && event.level.index >= Level.info.index);
   }
 }
 
