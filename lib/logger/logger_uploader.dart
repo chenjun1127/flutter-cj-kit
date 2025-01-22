@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:archive/archive_io.dart';
 import 'package:cj_kit/logger/logger_utils.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_share/flutter_share.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 class LoggerUploader {
   // 批量上传日志文件
@@ -38,7 +38,7 @@ class LoggerUploader {
     }
   }
 
-// 导入日志文件，打包后上传到下载目录或通过分享
+  // 导入日志文件，打包后上传到下载目录或通过分享
   static Future<void> uploadLogsToDownloads() async {
     final Directory logDir = await LoggerUtils.getLogDirectory();
     final List<FileSystemEntity> logFiles = logDir.listSync();
@@ -123,14 +123,19 @@ class LoggerUploader {
   static Future<void> _uploadToCloud(File file) async {
     await Future<void>.delayed(const Duration(seconds: 2)); // 模拟上传延迟
     debugPrint('Uploading ${file.path} to cloud...');
-  } // 分享日志文件（iOS/Android 都支持）
+  }
 
+  // 分享日志文件（iOS/Android 都支持）
   static Future<void> _shareLogFile(File logFile) async {
     try {
-      await FlutterShare.shareFile(
-        title: 'Share Log File',
-        filePath: logFile.path,
-      );
+      // 使用 shareXFiles 来分享文件
+      final ShareResult result = await Share.shareXFiles([
+        XFile(logFile.path), // 将文件路径传给 XFile
+      ]);
+
+      if (result.status == ShareResultStatus.dismissed) {
+        debugPrint('User dismissed the share dialog.');
+      }
       debugPrint('Log file shared successfully.');
     } catch (e) {
       debugPrint('Failed to share log file: $e');
