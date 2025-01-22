@@ -134,8 +134,16 @@ class FileLoggerOutput extends LogOutput {
   }
 
   Future<File> _getLogFile() async {
-    final Directory directory = await getApplicationDocumentsDirectory();
-    return File('${directory.path}/$fileName');
+    // 获取外部存储目录
+    Directory? directory = await getExternalStorageDirectory();
+
+    // 如果外部存储不可用，回退到应用文档目录
+    directory ??= await getApplicationDocumentsDirectory();
+    final Directory logsDir = Directory('${directory.path}/logs');
+    if (!logsDir.existsSync()) {
+      await logsDir.create(recursive: true); // 创建 logs 目录
+    }
+    return File('${logsDir.path}/$fileName');
   }
 
   String _removeAnsiEscape(String input) {

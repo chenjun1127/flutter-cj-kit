@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -8,7 +9,9 @@ class LoggerUtils {
 
   // 获取日志目录
   static Future<Directory> getLogDirectory() async {
-    final Directory directory = await getApplicationDocumentsDirectory();
+    Directory? directory = await getExternalStorageDirectory();
+    // 如果外部存储不可用，回退到应用文档目录
+    directory ??= await getApplicationDocumentsDirectory();
     return Directory('${directory.path}/logs')..createSync(recursive: true);
   }
 
