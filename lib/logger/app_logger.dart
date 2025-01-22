@@ -202,17 +202,18 @@ class SimpleLogPrinter extends LogPrinter {
     final StackFrameInfo stackFrameInfo = _extractStackFrameInfo(StackTrace.current);
     final String logMessage = _truncateMessage(event.message as String);
     final String timestamp = DateFormat('yyyy-MM-dd HH:mm:ss.SSS').format(event.time);
-
-    final String formattedLog = '${_logColors[event.level]}'
+    // 构建日志的基础部分
+    final String baseLog = '${_logColors[event.level]}'
         '[$timestamp] '
         // '${levelEmojis[event.level]}'
         '${levelAbbr[event.level]}'
-        '/${stackFrameInfo.fileName} '
-        '[${stackFrameInfo.methodName}:${stackFrameInfo.lineNumber}]: '
-        '$logMessage'
-        '\x1B[0m';
+        '/${stackFrameInfo.fileName} ';
+    // 根据 lineNumber 是否为 null，决定是否添加行号
+    final String formattedLog = stackFrameInfo.lineNumber != null
+        ? '$baseLog[${stackFrameInfo.methodName}:${stackFrameInfo.lineNumber}]' // 行号存在时添加
+        : '$baseLog${stackFrameInfo.methodName}';
 
-    return <String>[formattedLog];
+    return <String>['$formattedLog: $logMessage\x1B[0m'];
   }
 
   StackFrameInfo _extractStackFrameInfo(StackTrace stackTrace) {
@@ -225,7 +226,7 @@ class SimpleLogPrinter extends LogPrinter {
 
     final String fileName = _extractFileName(filePath);
     final String methodName = _extractMethodName(classNameAndMethodName);
-    final String lineNumber = _extractLineNumber(currentFrame);
+    final String? lineNumber = _extractLineNumber(currentFrame);
 
     return StackFrameInfo(
       fileName: fileName,
@@ -234,10 +235,10 @@ class SimpleLogPrinter extends LogPrinter {
     );
   }
 
-  String _extractLineNumber(String frame) {
+  String? _extractLineNumber(String frame) {
     final RegExp regExp = RegExp(r':(\d+):');
     final Match? match = regExp.firstMatch(frame);
-    return match?.group(1) ?? '0'; // 如果没有匹配到行号，返回0
+    return match?.group(1);
   }
 
   // 提取文件名的辅助方法
@@ -278,10 +279,10 @@ class StackFrameInfo {
   StackFrameInfo({
     required this.fileName,
     required this.methodName,
-    required this.lineNumber,
+    this.lineNumber,
   });
 
   final String fileName;
   final String methodName;
-  final String lineNumber;
+  final String? lineNumber;
 }
