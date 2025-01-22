@@ -101,9 +101,9 @@ class FileLoggerOutput extends LogOutput {
   void output(OutputEvent event) {
     _buffer.addAll(event.lines.map((String line) {
       // 先移除 ANSI 转义序列
-      final String cleanLine = _removeAnsiEscape(line);
-      // 确保每行都以换行符结束
-      return cleanLine.endsWith('\n') ? cleanLine : '$cleanLine\n';
+      final String cleanLine = _removeAnsiEscape(line.trimRight());
+      // 确保每行都以单个换行符结束
+      return '$cleanLine\n';
     }));
     if (_buffer.length >= bufferSize) {
       _flushBuffer();
@@ -165,7 +165,16 @@ class LoggerFilter extends LogFilter {
 
 class LoggerOutput extends LogOutput {
   @override
-  void output(OutputEvent event) => event.lines.forEach(debugPrint);
+  void output(OutputEvent event) {
+    // 处理每一行输出，移除可能的额外换行符
+    for (final String line in event.lines) {
+      // 移除行尾的换行符（如果有的话）
+      final String cleanLine = line.trimRight();
+      if (cleanLine.isNotEmpty) {
+        debugPrint(cleanLine);
+      }
+    }
+  }
 }
 
 class SimpleLogPrinter extends LogPrinter {
@@ -220,8 +229,11 @@ class SimpleLogPrinter extends LogPrinter {
     final String formattedLog = stackFrameInfo.lineNumber != null
         ? '$baseLog[${stackFrameInfo.methodName}:${stackFrameInfo.lineNumber}]'
         : '$baseLog[${stackFrameInfo.methodName}]';
+    // 移除消息中可能存在的额外换行符
+    final String cleanMessage = logMessage.trimRight();
 
-    return <String>['$formattedLog: $logMessage\x1B[0m'];
+    // 返回格式化的日志行，不添加额外的换行符
+    return <String>['$formattedLog: $cleanMessage\x1B[0m'];
   }
 
   StackFrameInfo _extractStackFrameInfo(StackTrace stackTrace) {
