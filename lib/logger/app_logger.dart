@@ -99,7 +99,12 @@ class FileLoggerOutput extends LogOutput {
 
   @override
   void output(OutputEvent event) {
-    _buffer.addAll(event.lines.map(_removeAnsiEscape));
+    _buffer.addAll(event.lines.map((String line) {
+      // 先移除 ANSI 转义序列
+      final String cleanLine = _removeAnsiEscape(line);
+      // 确保每行都以换行符结束
+      return cleanLine.endsWith('\n') ? cleanLine : '$cleanLine\n';
+    }));
     if (_buffer.length >= bufferSize) {
       _flushBuffer();
     }
@@ -113,7 +118,7 @@ class FileLoggerOutput extends LogOutput {
 
     final File file = await _getLogFile();
     final IOSink sink = file.openWrite(mode: FileMode.append);
-    sink.writeAll(_buffer, '\n');
+    sink.writeAll(_buffer);
     await sink.flush();
     await sink.close();
     _buffer.clear();
@@ -200,17 +205,20 @@ class SimpleLogPrinter extends LogPrinter {
   @override
   List<String> log(LogEvent event) {
     final StackFrameInfo stackFrameInfo = _extractStackFrameInfo(StackTrace.current);
-    final String logMessage = _truncateMessage(event.message as String);
+      String logMessage = _truncateMessage(event.message as String);
     final String timestamp = DateFormat('yyyy-MM-dd HH:mm:ss.SSS').format(event.time);
+    if (!logMessage.endsWith('\n')) {
+      logMessage = '$logMessage\n';
+    }
     // 构建日志的基础部分
     final String baseLog = '${_logColors[event.level]}'
         '[$timestamp] '
         // '${levelEmojis[event.level]}'
         '${levelAbbr[event.level]}'
         '/${stackFrameInfo.fileName} ';
-    // 根据 lineNumber 是否为 null，决定是否添加行号
+    // 根据 lineNumber 是否存在，决定是否添加行号
     final String formattedLog = stackFrameInfo.lineNumber != null
-        ? '$baseLog[${stackFrameInfo.methodName}:${stackFrameInfo.lineNumber}]' // 行号存在时添加
+        ? '$baseLog[${stackFrameInfo.methodName}:${stackFrameInfo.lineNumber}]'
         : '$baseLog[${stackFrameInfo.methodName}]';
 
     return <String>['$formattedLog: $logMessage\x1B[0m'];
