@@ -225,13 +225,19 @@ class SimpleLogPrinter extends LogPrinter {
 
     final String fileName = _extractFileName(filePath);
     final String methodName = _extractMethodName(classNameAndMethodName);
-    final String lineNumber = RegExp(r':(\d+):').firstMatch(currentFrame)?.group(1) ?? '0';
+    final String lineNumber = _extractLineNumber(currentFrame);
 
     return StackFrameInfo(
       fileName: fileName,
       methodName: methodName,
       lineNumber: lineNumber,
     );
+  }
+
+  String _extractLineNumber(String frame) {
+    final RegExp regExp = RegExp(r':(\d+):');
+    final Match? match = regExp.firstMatch(frame);
+    return match?.group(1) ?? '0'; // 如果没有匹配到行号，返回0
   }
 
   // 提取文件名的辅助方法
