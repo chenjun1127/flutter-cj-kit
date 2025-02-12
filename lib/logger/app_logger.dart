@@ -214,7 +214,7 @@ class SimpleLogPrinter extends LogPrinter {
   @override
   List<String> log(LogEvent event) {
     final StackFrameInfo stackFrameInfo = _extractStackFrameInfo(StackTrace.current);
-      String logMessage = _truncateMessage(event.message as String);
+    String logMessage = _truncateMessage(event.message as String);
     final String timestamp = DateFormat('yyyy-MM-dd HH:mm:ss.SSS').format(event.time);
     if (!logMessage.endsWith('\n')) {
       logMessage = '$logMessage\n';
@@ -237,16 +237,13 @@ class SimpleLogPrinter extends LogPrinter {
   }
 
   StackFrameInfo _extractStackFrameInfo(StackTrace stackTrace) {
-    final String currentFrame = stackTrace.toString().split('\n')[4];
-    final List<String> frameParts =
-        currentFrame.split(' ').where((String part) => part.isNotEmpty && !part.contains('#')).toList();
-
+    final String frame = stackTrace.toString().split('\n')[4];
+    final List<String> frameParts = frame.split(' ').where((String p) => p.isNotEmpty && !p.contains('#')).toList();
     final String classNameAndMethodName = frameParts[0];
     final String filePath = frameParts.firstWhere((String element) => element.contains('('));
-
     final String fileName = _extractFileName(filePath);
-    final String methodName = _extractMethodName(classNameAndMethodName);
-    final String? lineNumber = _extractLineNumber(currentFrame);
+    final String methodName = _extractMethodName(classNameAndMethodName, frame);
+    final String? lineNumber = _extractLineNumber(frame);
 
     return StackFrameInfo(
       fileName: fileName,
@@ -269,12 +266,36 @@ class SimpleLogPrinter extends LogPrinter {
   }
 
   // 提取方法名的辅助方法
-  String _extractMethodName(String classNameAndMethodName) {
-    final RegExp methodNameRegExp = RegExp(r'\.(\w+)(<.*>)?$');
-    final RegExpMatch? match = methodNameRegExp.firstMatch(classNameAndMethodName);
-    final String methodName = match?.group(1) ?? 'build';
-    final String className = classNameAndMethodName.split('.').first;
-    return '$className.$methodName';
+  String _extractMethodName(String classNameAndMethodName, String frame) {
+    try {
+      final List<String> parts = classNameAndMethodName.split('.');
+      if (parts.isNotEmpty && parts[0] == 'new') {
+        return parts.length == 1 ? _extractAnonymousMethodName(frame) : '${parts[1]}.${parts.last}';
+      }
+
+      final RegExp methodNameRegExp = RegExp(r'\.([^.<>]+)(?:<.*>)?$');
+      final RegExpMatch? match = methodNameRegExp.firstMatch(classNameAndMethodName);
+      if (match == null) {
+        return classNameAndMethodName;
+      }
+      final String methodName = match.group(1)!;
+      final String className = classNameAndMethodName.split('.').first;
+      return '$className.$methodName';
+    } catch (e) {
+      return classNameAndMethodName;
+    }
+  }
+
+  // 提取匿名闭包的方法名
+  String _extractAnonymousMethodName(String frame) {
+    final RegExp regExp = RegExp(r'([a-zA-Z0-9._]+)\._\.(<anonymous closure>)');
+    final Match? match = regExp.firstMatch(frame);
+    if (match != null) {
+      final String className = match.group(1)!;
+      final String closure = match.group(2)!;
+      return '$className.$closure';
+    }
+    return 'AnonymousClosure'; // 如果没有匹配到，返回默认值
   }
 
   // 截断消息的辅助方法
