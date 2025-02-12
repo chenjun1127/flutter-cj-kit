@@ -205,7 +205,7 @@ class SimpleLogPrinter extends LogPrinter {
   static const Map<Level, String> _logColors = <Level, String>{
     Level.trace: '\x1B[37m', // 白色
     Level.debug: '\x1B[34m', // 蓝色
-    Level.info: '\x1B[36m',// 绿色
+    Level.info: '\x1B[36m',// 青色
     Level.warning: '\x1B[93m', // 亮黄色
     Level.error: '\x1B[31m', // 红色
     Level.fatal: '\x1B[35m', // 紫色
