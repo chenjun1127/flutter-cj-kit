@@ -38,7 +38,7 @@ class AppLogger {
     return LoggerOutput();
   }
 
-  static void v(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+  static void t(dynamic message, [dynamic error, StackTrace? stackTrace]) {
     _logger.t(message, error: error, stackTrace: stackTrace);
   }
 
@@ -205,8 +205,8 @@ class SimpleLogPrinter extends LogPrinter {
   static const Map<Level, String> _logColors = <Level, String>{
     Level.trace: '\x1B[37m', // 白色
     Level.debug: '\x1B[34m', // 蓝色
-    Level.info: '\x1B[36m', // 绿色 (修改了这里，从36改为32)
-    Level.warning: '\x1B[33m', // 黄色
+    Level.info: '\x1B[36m',// 绿色
+    Level.warning: '\x1B[93m', // 亮黄色
     Level.error: '\x1B[31m', // 红色
     Level.fatal: '\x1B[35m', // 紫色
   };
