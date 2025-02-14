@@ -205,7 +205,7 @@ class SimpleLogPrinter extends LogPrinter {
   static const Map<Level, String> _logColors = <Level, String>{
     Level.trace: '\x1B[37m', // 白色
     Level.debug: '\x1B[34m', // 蓝色
-    Level.info: '\x1B[36m',// 青色
+    Level.info: '\x1B[36m', // 青色
     Level.warning: '\x1B[93m', // 亮黄色
     Level.error: '\x1B[31m', // 红色
     Level.fatal: '\x1B[35m', // 紫色
@@ -238,11 +238,28 @@ class SimpleLogPrinter extends LogPrinter {
 
   StackFrameInfo _extractStackFrameInfo(StackTrace stackTrace) {
     final String frame = stackTrace.toString().split('\n')[4];
+
+    // 分解栈帧信息，去除包含 '#' 的部分
     final List<String> frameParts = frame.split(' ').where((String p) => p.isNotEmpty && !p.contains('#')).toList();
-    final String classNameAndMethodName = frameParts[0];
-    final String filePath = frameParts.firstWhere((String element) => element.contains('('));
+
+    // 检查是否包含匿名闭包，并且去掉 "#4" 这样的部分
+    String classNameAndMethodName;
+    if (frame.contains('<anonymous')) {
+      // 如果包含 <anonymous>，将整个方法名作为 classNameAndMethodName
+      classNameAndMethodName = frame.split('(')[0].trim().replaceAll(RegExp(r'#\d+\s*'), '');
+    } else {
+      // 如果不包含匿名闭包，按原来方式提取，确保去掉 # 的部分
+      classNameAndMethodName = frameParts.sublist(0, frameParts.length - 1).join(' ');
+    }
+
+    // 获取文件路径（文件名包括行号）
+    final String filePath = frameParts.lastWhere((String element) => element.contains('('));
     final String fileName = _extractFileName(filePath);
+
+    // 获取方法名（这里会使用匿名闭包的情况）
     final String methodName = _extractMethodName(classNameAndMethodName, frame);
+
+    // 获取行号
     final String? lineNumber = _extractLineNumber(frame);
 
     return StackFrameInfo(
@@ -276,6 +293,9 @@ class SimpleLogPrinter extends LogPrinter {
       final RegExp methodNameRegExp = RegExp(r'\.([^.<>]+)(?:<.*>)?$');
       final RegExpMatch? match = methodNameRegExp.firstMatch(classNameAndMethodName);
       if (match == null) {
+        if (classNameAndMethodName.contains('<anonymous closure>')) {
+          return _extractAnonymousMethodName(frame);
+        }
         return classNameAndMethodName;
       }
       final String methodName = match.group(1)!;
