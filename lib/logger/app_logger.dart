@@ -293,7 +293,7 @@ class SimpleLogPrinter extends LogPrinter {
       final RegExp methodNameRegExp = RegExp(r'\.([^.<>]+)(?:<.*>)?$');
       final RegExpMatch? match = methodNameRegExp.firstMatch(classNameAndMethodName);
       if (match == null) {
-        if (classNameAndMethodName.contains('<anonymous closure>')) {
+        if (classNameAndMethodName.contains('<anonymous closure>') && classNameAndMethodName.startsWith('new')) {
           return _extractAnonymousMethodName(frame);
         }
         return classNameAndMethodName;
