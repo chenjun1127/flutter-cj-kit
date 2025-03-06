@@ -130,7 +130,7 @@ class LoggerUploader {
   static Future<void> _shareLogFile(File logFile) async {
     try {
       // 使用 shareXFiles 来分享文件
-      final ShareResult result = await Share.shareXFiles([
+      final ShareResult result = await Share.shareXFiles(<XFile>[
         XFile(logFile.path), // 将文件路径传给 XFile
       ]);
 

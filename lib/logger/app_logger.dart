@@ -31,8 +31,8 @@ class AppLogger {
       return FileLoggerOutput(
         fileName: 'app.log',
         maxSizeBytes: 100 * 1024 * 1024, // 100MB
-        bufferSize: 50,
-        flushInterval: const Duration(seconds: 5),
+        bufferSize: 10, // 减小缓冲区大小，更频繁写入
+        flushInterval: const Duration(milliseconds: 300), // 更频繁地刷新
       );
     }
     return LoggerOutput();
@@ -80,62 +80,127 @@ class FileLoggerOutput extends LogOutput {
   IOSink? _sink;
   final List<String> _buffer = <String>[];
   Timer? _flushTimer;
+  bool _isFlushing = false; // 用来标记是否正在刷新
+  bool _needsReinit = false; // 标记是否需要重新初始化
 
   @override
   Future<void> init() async {
-    final File file = await _getLogFile();
-    await file.create(recursive: true);
-    _sink = file.openWrite(mode: FileMode.append);
-    _startFlushTimer();
+    try {
+      final File file = await _getLogFile();
+      await file.create(recursive: true);
+      _sink = file.openWrite(mode: FileMode.append);
+      _startFlushTimer();
+    } catch (e) {
+      debugPrint('日志初始化失败: $e');
+    }
   }
 
   @override
   Future<void> destroy() async {
-    await _flushBuffer();
-    await _sink?.close();
     _flushTimer?.cancel();
+
+    // 等待任何正在进行的刷新操作完成
+    while (_isFlushing) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+
+    await _flushBuffer();
+    await _sink?.flush();
+    await _sink?.close();
     _sink = null;
   }
 
   @override
   void output(OutputEvent event) {
-    _buffer.addAll(event.lines.map((String line) {
-      // 先移除 ANSI 转义序列
+    // 通过直接写入单一完整行来避免行断开
+    for (final String line in event.lines) {
       final String cleanLine = _removeAnsiEscape(line.trimRight());
-      // 确保每行都以单个换行符结束
-      return '$cleanLine\n';
-    }));
-    if (_buffer.length >= bufferSize) {
+      // 添加完整的一行，确保以换行符结束
+      _buffer.add('$cleanLine\n');
+    }
+
+    // 如果缓冲区达到上限，尝试刷新
+    if (_buffer.length >= bufferSize && !_isFlushing) {
       _flushBuffer();
     }
-    _checkFileSizeAndRotate();
+
+    // 如果需要重新初始化，且当前没有刷新操作
+    if (_needsReinit && !_isFlushing) {
+      _needsReinit = false;
+      _reinitialize();
+    }
   }
 
   Future<void> _flushBuffer() async {
-    if (_buffer.isEmpty) {
+    if (_buffer.isEmpty || _sink == null || _isFlushing) {
       return;
     }
 
-    final File file = await _getLogFile();
-    final IOSink sink = file.openWrite(mode: FileMode.append);
-    sink.writeAll(_buffer);
-    await sink.flush();
-    await sink.close();
-    _buffer.clear();
+    _isFlushing = true;
+    try {
+      // 复制当前缓冲区内容
+      final List<String> currentBuffer = List<String>.from(_buffer);
+      _buffer.clear();
+
+      // 一次性写入所有日志，而不是逐行写入
+      String completeLog = currentBuffer.join();
+      _sink!.write(completeLog);
+      await _sink!.flush();
+
+      // 检查文件大小并轮转
+      await _checkFileSizeAndRotate();
+    } catch (e) {
+      debugPrint('日志刷新失败: $e');
+      _needsReinit = true;
+    } finally {
+      _isFlushing = false;
+    }
   }
 
   void _startFlushTimer() {
     _flushTimer?.cancel();
-    _flushTimer = Timer.periodic(flushInterval, (_) => _flushBuffer());
+    _flushTimer = Timer.periodic(flushInterval, (_) {
+      if (!_isFlushing) {
+        _flushBuffer();
+      }
+    });
   }
 
   Future<void> _checkFileSizeAndRotate() async {
-    final File file = await _getLogFile();
-    if (await file.length() > maxSizeBytes) {
-      final String newName = '${file.path}_${DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now())}';
-      await file.rename(newName);
-      await init();
+    try {
+      final File file = await _getLogFile();
+      if (file.existsSync() && await file.length() > maxSizeBytes) {
+        // 关闭当前sink
+        await _sink?.flush();
+        await _sink?.close();
+        _sink = null;
+
+        // 重命名文件
+        final String newName = '${file.path}_${DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now())}';
+        await file.rename(newName);
+
+        // 标记需要重新初始化
+        _needsReinit = true;
+      }
+    } catch (e) {
+      debugPrint('日志文件轮转失败: $e');
+      _needsReinit = true;
     }
+  }
+
+  Future<void> _reinitialize() async {
+    // 确保当前没有刷新操作
+    if (_isFlushing) {
+      return;
+    }
+
+    // 关闭现有sink
+    await _sink?.flush();
+    await _sink?.close();
+    _sink = null;
+
+    // 重新初始化
+    await init();
   }
 
   Future<File> _getLogFile() async {
@@ -201,7 +266,7 @@ class SimpleLogPrinter extends LogPrinter {
     Level.fatal: 'F',
   };
 
-  // ANSI 颜色代码优化，使用更清晰的命名和更合适的颜色
+  // ANSI 颜色代码
   static const Map<Level, String> _logColors = <Level, String>{
     Level.trace: '\x1B[37m', // 白色
     Level.debug: '\x1B[34m', // 蓝色
@@ -214,25 +279,28 @@ class SimpleLogPrinter extends LogPrinter {
   @override
   List<String> log(LogEvent event) {
     final StackFrameInfo stackFrameInfo = _extractStackFrameInfo(StackTrace.current);
-    String logMessage = _truncateMessage(event.message as String);
     final String timestamp = DateFormat('yyyy-MM-dd HH:mm:ss.SSS').format(event.time);
-    if (!logMessage.endsWith('\n')) {
-      logMessage = '$logMessage\n';
-    }
+
+    // 确保消息是字符串
+    String logMessage = event.message is String ? event.message as String : event.message.toString();
+
+    // 截断长消息
+    logMessage = _truncateMessage(logMessage);
+
     // 构建日志的基础部分
     final String baseLog = '${_logColors[event.level]}'
         '[$timestamp] '
-        // '${levelEmojis[event.level]}'
         '${levelAbbr[event.level]}'
         '/${stackFrameInfo.fileName} ';
-    // 根据 lineNumber 是否存在，决定是否添加行号
+
     final String formattedLog = stackFrameInfo.lineNumber != null
         ? '$baseLog[${stackFrameInfo.methodName}:${stackFrameInfo.lineNumber}]'
         : '$baseLog[${stackFrameInfo.methodName}]';
-    // 移除消息中可能存在的额外换行符
-    final String cleanMessage = logMessage.trimRight();
 
-    // 返回格式化的日志行，不添加额外的换行符
+    // 移除消息中的换行符，确保是单行日志
+    final String cleanMessage = logMessage.replaceAll('\n', ' ');
+
+    // 返回格式化的日志行
     return <String>['$formattedLog: $cleanMessage\x1B[0m'];
   }
 
