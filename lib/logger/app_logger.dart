@@ -14,10 +14,14 @@ class AppLogger {
 
   AppLogger._();
 
+  // 默认最大大小 5MB
+  static int _maxSizeBytes = 5 * 1024 * 1024;
+
   static AppLogger? _instance;
   static late Logger _logger;
 
-  static Future<void> init() async {
+  static Future<void> init({int maxSizeBytes = 10 * 1024 * 1024}) async {
+    _maxSizeBytes = maxSizeBytes;
     _logger = Logger(
       filter: LoggerFilter(),
       output: await _createLogOutput(),
@@ -30,12 +34,22 @@ class AppLogger {
     if (kReleaseMode) {
       return FileLoggerOutput(
         fileName: 'app.log',
-        maxSizeBytes: 100 * 1024 * 1024, // 100MB
+        maxSizeBytes: _maxSizeBytes,
         bufferSize: 10, // 减小缓冲区大小，更频繁写入
         flushInterval: const Duration(milliseconds: 300), // 更频繁地刷新
       );
+    } else {
+      return MultiLogOutput(<LogOutput>[
+        LoggerOutput(),
+        FileLoggerOutput(
+          // 同时记录到文件
+          fileName: 'app.log',
+          maxSizeBytes: _maxSizeBytes,
+          bufferSize: 10,
+          flushInterval: const Duration(milliseconds: 300),
+        )
+      ]);
     }
-    return LoggerOutput();
   }
 
   static void t(dynamic message, [dynamic error, StackTrace? stackTrace]) {
@@ -143,7 +157,7 @@ class FileLoggerOutput extends LogOutput {
       _buffer.clear();
 
       // 一次性写入所有日志，而不是逐行写入
-      String completeLog = currentBuffer.join();
+      final String completeLog = currentBuffer.join();
       _sink!.write(completeLog);
       await _sink!.flush();
 
@@ -414,4 +428,17 @@ class StackFrameInfo {
   final String fileName;
   final String methodName;
   final String? lineNumber;
+}
+
+class MultiLogOutput extends LogOutput {
+  MultiLogOutput(this.outputs);
+
+  final List<LogOutput> outputs;
+
+  @override
+  void output(OutputEvent event) {
+    for (final LogOutput output in outputs) {
+      output.output(event); // Forward event to each output
+    }
+  }
 }
