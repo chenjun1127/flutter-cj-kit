@@ -10,6 +10,7 @@ export 'package:archive/archive_io.dart';
 export 'package:cj_kit/fps/fps_utils.dart';
 export 'package:cj_kit/logger/app_logger.dart';
 export 'package:cj_kit/logger/logger_uploader.dart';
+export 'package:share_plus/share_plus.dart';
 
 typedef LogCallback = void Function(String);
 
