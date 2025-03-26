@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:logger/logger.dart';
+import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 class AppLogger {
@@ -190,8 +191,10 @@ class FileLoggerOutput extends LogOutput {
         _sink = null;
 
         // 重命名文件
-        final String newName = '${file.path}_${DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now())}';
-        await file.rename(newName);
+        final String timestamp = DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now());
+        final String newName = 'app_$timestamp.log';
+        final String newPath = path.join(file.parent.path, newName);
+        await file.rename(newPath);
 
         // 标记需要重新初始化
         _needsReinit = true;

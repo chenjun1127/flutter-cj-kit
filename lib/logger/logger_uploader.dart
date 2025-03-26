@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:archive/archive_io.dart';
 import 'package:cj_kit/logger/logger_utils.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:path/path.dart' as p;
+import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -62,7 +62,7 @@ class LoggerUploader {
       }
       final String isoDate = DateTime.now().toIso8601String().replaceAll('T', '_').replaceAll(':', '-').split('.')[0];
       // 将 zip 文件保存到下载目录
-      final String zipFilePath = p.join(downloadDir.path, 'logs_$isoDate.zip');
+      final String zipFilePath = path.join(downloadDir.path, 'logs_$isoDate.zip');
       final File savedZipFile = await zipFile.copy(zipFilePath);
       debugPrint('Logs saved to: ${savedZipFile.path}');
 
@@ -81,7 +81,7 @@ class LoggerUploader {
       downloadDir = await getExternalStorageDirectory();
       if (downloadDir != null) {
         // 获取 `Download` 文件夹路径
-        downloadDir = Directory(p.join(downloadDir.path, 'Download'));
+        downloadDir = Directory(path.join(downloadDir.path, 'Download'));
       }
     } else if (Platform.isIOS) {
       downloadDir = await getApplicationDocumentsDirectory();
@@ -105,7 +105,7 @@ class LoggerUploader {
   // 将日志文件压缩成 zip
   static Future<File> _createZipFromLogs(List<FileSystemEntity> logFiles, String logDirPath) async {
     final String isoDate = DateTime.now().toIso8601String().replaceAll('T', '_').replaceAll(':', '-').split('.')[0];
-    final String zipFilePath = p.join(logDirPath, 'logs_$isoDate.zip');
+    final String zipFilePath = path.join(logDirPath, 'logs_$isoDate.zip');
     final File zipFile = File(zipFilePath);
 
     final ZipFileEncoder encoder = ZipFileEncoder();
