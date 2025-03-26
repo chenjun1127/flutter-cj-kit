@@ -39,18 +39,8 @@ class AppLogger {
         bufferSize: 10, // 减小缓冲区大小，更频繁写入
         flushInterval: const Duration(milliseconds: 300), // 更频繁地刷新
       );
-    } else {
-      return MultiLogOutput(<LogOutput>[
-        LoggerOutput(),
-        FileLoggerOutput(
-          // 同时记录到文件
-          fileName: 'app.log',
-          maxSizeBytes: _maxSizeBytes,
-          bufferSize: 10,
-          flushInterval: const Duration(milliseconds: 300),
-        )
-      ]);
     }
+    return LoggerOutput();
   }
 
   static void t(dynamic message, [dynamic error, StackTrace? stackTrace]) {
