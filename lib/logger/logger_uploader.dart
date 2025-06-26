@@ -111,7 +111,7 @@ class LoggerUploader {
     final ZipFileEncoder encoder = ZipFileEncoder();
     encoder.create(zipFile.path);
     for (final FileSystemEntity entity in logFiles) {
-      if (entity is File) {
+      if (entity is File && entity.path.endsWith('.log')) {
         await encoder.addFile(entity);
       }
     }

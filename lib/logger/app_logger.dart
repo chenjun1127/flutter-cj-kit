@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:cj_kit/logger/logger_utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:logger/logger.dart';
@@ -20,14 +21,63 @@ class AppLogger {
 
   static AppLogger? _instance;
   static late Logger _logger;
+  static Timer? _cleanupTimer;
+  static int _retentionDays = 7; // 默认保留7天
+  static Duration _cleanupInterval = const Duration(hours: 24); // 默认24小时清理一次
 
-  static Future<void> init({int maxSizeBytes = 10 * 1024 * 1024}) async {
+  static Future<void> init({
+    int maxSizeBytes = 10 * 1024 * 1024,
+    int retentionDays = 7,
+    Duration cleanupInterval = const Duration(hours: 24),
+    bool enableAutoCleanup = true,
+  }) async {
     _maxSizeBytes = maxSizeBytes;
+    _retentionDays = retentionDays;
+    _cleanupInterval = cleanupInterval;
     _logger = Logger(
       filter: LoggerFilter(),
       output: await _createLogOutput(),
       printer: SimpleLogPrinter(),
     );
+    if (enableAutoCleanup) {
+      await cleanOldLogs();
+      _startCleanupTimer();
+    }
+  }
+
+  static void _startCleanupTimer() {
+    _cleanupTimer?.cancel();
+    _cleanupTimer = Timer.periodic(_cleanupInterval, (_) async {
+      try {
+        await cleanOldLogs();
+        debugPrint('定时日志清理完成');
+      } catch (e) {
+        debugPrint('定时日志清理失败: $e');
+      }
+    });
+  }
+
+  /// 停止定时清理任务
+  static void stopAutoCleanup() {
+    _cleanupTimer?.cancel();
+    _cleanupTimer = null;
+  }
+
+  /// 手动清理过期日志
+  /// [customRetentionDays] 自定义保留天数，如果不传则使用初始化时的配置
+  static Future<void> cleanOldLogs([int? customRetentionDays]) async {
+    final int retentionDays = customRetentionDays ?? _retentionDays;
+    await LoggerUtils.cleanOldLogs(retentionDays);
+  }
+
+  // 获取当前配置信息
+  static Map<String, dynamic> getConfig() {
+    return <String, dynamic>{
+      'maxSizeBytes': _maxSizeBytes,
+      'retentionDays': _retentionDays,
+      'cleanupInterval': _cleanupInterval.toString(),
+      'autoCleanupEnabled': _cleanupTimer != null,
+    };
   }
 
   // 创建合适的日志输出
@@ -36,8 +86,11 @@ class AppLogger {
       return FileLoggerOutput(
         fileName: 'app.log',
         maxSizeBytes: _maxSizeBytes,
-        bufferSize: 10, // 减小缓冲区大小，更频繁写入
-        flushInterval: const Duration(milliseconds: 300), // 更频繁地刷新
+        bufferSize: 10,
+        // 减小缓冲区大小，更频繁写入
+        flushInterval: const Duration(milliseconds: 300),
+        // 更频繁地刷新
+        retentionDays: _retentionDays,
       );
     }
     return LoggerOutput();
@@ -75,12 +128,14 @@ class FileLoggerOutput extends LogOutput {
     required this.maxSizeBytes,
     required this.bufferSize,
     required this.flushInterval,
+    this.retentionDays = 7,
   });
 
   final String fileName;
   final int maxSizeBytes;
   final int bufferSize;
   final Duration flushInterval;
+  final int retentionDays;
 
   IOSink? _sink;
   final List<String> _buffer = <String>[];
@@ -188,6 +243,8 @@ class FileLoggerOutput extends LogOutput {
 
         // 标记需要重新初始化
         _needsReinit = true;
+        // 轮转后自动清理过期日志
+        await LoggerUtils.cleanOldLogs(retentionDays);
       }
     } catch (e) {
       debugPrint('日志文件轮转失败: $e');
@@ -213,7 +270,6 @@ class FileLoggerOutput extends LogOutput {
   Future<File> _getLogFile() async {
     // 获取外部存储目录
     Directory? directory = await getExternalStorageDirectory();
-
     // 如果外部存储不可用，回退到应用文档目录
     directory ??= await getApplicationDocumentsDirectory();
     final Directory logsDir = Directory('${directory.path}/logs');
