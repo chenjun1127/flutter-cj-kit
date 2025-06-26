@@ -175,19 +175,23 @@ class FileLoggerOutput extends LogOutput {
     // 通过直接写入单一完整行来避免行断开
     for (final String line in event.lines) {
       final String cleanLine = _removeAnsiEscape(line.trimRight());
-      // 添加完整的一行，确保以换行符结束
       _buffer.add('$cleanLine\n');
     }
 
-    // 如果缓冲区达到上限，尝试刷新
+    // 改进：使用 unawaited 来避免阻塞，同时确保错误处理
     if (_buffer.length >= bufferSize && !_isFlushing) {
-      _flushBuffer();
+      unawaited(_flushBuffer().catchError((dynamic error) {
+        debugPrint('Background flush failed: $error');
+        _needsReinit = true;
+      }));
     }
 
-    // 如果需要重新初始化，且当前没有刷新操作
+    // 改进：同样处理重新初始化
     if (_needsReinit && !_isFlushing) {
       _needsReinit = false;
-      _reinitialize();
+      unawaited(_reinitialize().catchError((dynamic error) {
+        debugPrint('Reinitialize failed: $error');
+      }));
     }
   }
 
