@@ -9,9 +9,12 @@ class LoggerUtils {
 
   // 获取日志目录
   static Future<Directory> getLogDirectory() async {
-    Directory? directory = await getExternalStorageDirectory();
-    // 如果外部存储不可用，回退到应用文档目录
-    directory ??= await getApplicationDocumentsDirectory();
+    Directory directory;
+    if (Platform.isAndroid) {
+      directory = (await getExternalStorageDirectory()) ?? await getApplicationDocumentsDirectory();
+    } else {
+      directory = await getApplicationDocumentsDirectory();
+    }
     return Directory('${directory.path}/logs')..createSync(recursive: true);
   }
 
